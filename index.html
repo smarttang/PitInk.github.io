@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PitInk — 原生 macOS Markdown 写作工具</title>
+  <meta name="description" content="PitInk：原生 macOS Markdown 编辑器。双栏预览、多标签、任务勾选、图片粘贴、DeepSeek AI 补全。Dig deep. Write clear." />
+  <link rel="icon" type="image/png" href="./logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-soft: #f7f7f5;
+      --ink: #121212;
+      --muted: #5f5f5f;
+      --line: #e8e8e4;
+      --accent: #0f766e;
+      --accent-soft: #e8f5f3;
+      --surface: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    body {
+      font-family: "Figtree", "PingFang SC", "Hiragino Sans GB", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .page {
+      width: min(1080px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    /* —— Nav —— */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .nav-inner {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.015em;
+    }
+
+    .brand img {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 0.94rem;
+      font-weight: 500;
+    }
+
+    .nav-links a:hover { color: var(--ink); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 0 18px;
+      border-radius: 10px;
+      font-weight: 650;
+      font-size: 0.95rem;
+      border: 1px solid transparent;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+
+    .btn-primary {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: #000; }
+
+    .btn-secondary {
+      background: var(--bg-soft);
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    .btn-secondary:hover { border-color: #d4d4d0; }
+
+    .btn-dark {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .btn-block {
+      width: min(320px, 100%);
+      min-height: 48px;
+    }
+
+    /* —— Hero —— */
+    .hero {
+      padding: 48px 0 56px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      width: min(920px, 92vw);
+      height: 420px;
+      transform: translateX(-50%);
+      background:
+        radial-gradient(ellipse at center, rgba(15, 118, 110, 0.10), transparent 68%),
+        radial-gradient(ellipse at 50% 80%, rgba(0, 0, 0, 0.05), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .hero > * { position: relative; z-index: 1; }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 auto 18px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+
+    .hero-title {
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: clamp(2rem, 4.8vw, 3.15rem);
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin: 0 auto 14px;
+      min-height: 1.2em;
+      color: var(--ink);
+    }
+
+    .hero-title .rotate {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      width: 8.2em;
+      min-height: 1.2em;
+    }
+
+    .hero-title .rotate span {
+      display: block;
+      width: 100%;
+      text-align: center;
+      animation: titleIn 0.55s ease both;
+    }
+
+    .hero-title .rotate.is-out span {
+      animation: titleOut 0.35s ease both;
+    }
+
+    .hero-sub {
+      max-width: 34rem;
+      margin: 0 auto 22px;
+      font-size: 1.05rem;
+      line-height: 1.65;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    @keyframes titleIn {
+      from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+      to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+
+    @keyframes titleOut {
+      from { opacity: 1; transform: translateY(0); filter: blur(0); }
+      to { opacity: 0; transform: translateY(-10px); filter: blur(4px); }
+    }
+
+    .hero-resolve {
+      font-size: 1.08rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+
+    .cta-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .cta-stack .btn-block {
+      width: auto;
+      min-width: 160px;
+    }
+
+    .trust {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      max-width: 36rem;
+      margin: 0 auto 8px;
+    }
+
+    .trust svg { flex: 0 0 auto; opacity: 0.75; }
+
+    /* Premium product shot */
+    .hero-shot {
+      position: relative;
+      margin: 28px auto 0;
+      width: min(960px, 100%);
+      padding: 20px 8px 4px;
+    }
+
+    .hero-shot-glow {
+      position: absolute;
+      inset: 8% 4% auto;
+      height: 70%;
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.10), transparent 72%);
+      filter: blur(28px);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .hero-shot-frame {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #f4f4f2;
+      border: 1px solid rgba(17, 17, 17, 0.08);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.75) inset,
+        0 30px 70px rgba(0, 0, 0, 0.14),
+        0 10px 24px rgba(0, 0, 0, 0.06);
+      animation: floatShot 6.5s ease-in-out infinite;
+    }
+
+    .hero-shot-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .hero-shot-caption {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    @keyframes floatShot {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .preview {
+      max-width: 880px;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.06);
+      text-align: left;
+    }
+
+    .preview-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      background: #f3f3f1;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #d4d4d4;
+    }
+
+    .dot.r { background: #ff5f57; }
+    .dot.y { background: #febc2e; }
+    .dot.g { background: #28c840; }
+
+    .preview-bar strong {
+      margin-left: 8px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .preview-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 280px;
+    }
+
+    .pane {
+      padding: 18px 18px 22px;
+      font-size: 0.9rem;
+    }
+
+    .pane-edit {
+      border-right: 1px solid var(--line);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #333;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      background: #fafafa;
+    }
+
+    .pane-preview {
+      line-height: 1.65;
+    }
+
+    .pane-preview h3 {
+      font-family: "Syne", sans-serif;
+      font-size: 1.25rem;
+      margin-bottom: 10px;
+    }
+
+    .pane-preview h4 {
+      font-size: 0.98rem;
+      margin: 14px 0 8px;
+    }
+
+    .pane-preview ul {
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      color: #333;
+    }
+
+    .pane-preview li {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .check {
+      width: 14px;
+      height: 14px;
+      margin-top: 4px;
+      border: 1.5px solid #999;
+      border-radius: 3px;
+      flex: 0 0 auto;
+    }
+
+    .check.on {
+      background: var(--ink);
+      border-color: var(--ink);
+      box-shadow: inset 0 0 0 2px #fff;
+    }
+
+    .done { color: #777; text-decoration: line-through; }
+
+    /* —— Sections —— */
+    .band {
+      background: var(--bg-soft);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    section {
+      padding: 64px 0;
+    }
+
+    .section-head {
+      text-align: center;
+      margin-bottom: 28px;
+      max-width: 40rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .section-head h2 {
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.6rem, 3vw, 2.15rem);
+      letter-spacing: -0.03em;
+      margin-bottom: 10px;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 1.02rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px 20px;
+      height: 100%;
+    }
+
+    .card .num {
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      color: #cfcfcf;
+      margin-bottom: 8px;
+    }
+
+    .card h3 {
+      font-family: "Syne", sans-serif;
+      font-size: 1.08rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 0.96rem;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 36px;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 36px;
+    }
+
+    .split h2 {
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.45rem, 2.6vw, 1.95rem);
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+      margin-bottom: 14px;
+    }
+
+    .split > div > p {
+      color: var(--muted);
+      margin-bottom: 18px;
+      line-height: 1.7;
+    }
+
+    .checks {
+      list-style: none;
+      display: grid;
+      gap: 12px;
+    }
+
+    .checks li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-weight: 500;
+      line-height: 1.55;
+    }
+
+    .checks li .mark {
+      color: var(--accent);
+      font-weight: 700;
+      flex: 0 0 auto;
+      line-height: 1.55;
+    }
+
+    .checks li .text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .checks code {
+      white-space: nowrap;
+    }
+
+    .faq {
+      max-width: 760px;
+      margin: 0 auto;
+      display: grid;
+      gap: 10px;
+    }
+
+    details.item {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    details.item summary {
+      cursor: pointer;
+      font-weight: 650;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    details.item summary::-webkit-details-marker { display: none; }
+    details.item summary::after { content: "+"; color: var(--muted); }
+    details.item[open] summary::after { content: "–"; }
+
+    details.item p {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .final {
+      text-align: center;
+      padding-bottom: 72px;
+    }
+
+    .final h2 {
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.45rem, 2.8vw, 2rem);
+      letter-spacing: -0.03em;
+      margin-bottom: 10px;
+    }
+
+    .final p {
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 22px 0 34px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a:hover { color: var(--ink); }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+
+    .reveal.is-in {
+      opacity: 1;
+      transform: none;
+    }
+
+    @media (max-width: 860px) {
+      .nav-links { display: none; }
+      .grid-3,
+      .preview-body,
+      .split {
+        grid-template-columns: 1fr;
+      }
+      .pane-edit { border-right: none; border-bottom: 1px solid var(--line); }
+      .hero { padding: 36px 0 40px; }
+      .hero-shot { margin-top: 20px; padding: 8px 0 0; }
+      .hero-shot-frame { border-radius: 14px; animation: none; }
+      .cta-stack .btn-block { min-width: 140px; }
+      section { padding: 48px 0; }
+      .split { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="page nav-inner">
+      <a class="brand" href="#">
+        <img src="./logo.png" alt="" width="28" height="28" />
+        PitInk
+      </a>
+      <div class="nav-right">
+        <div class="nav-links">
+          <a href="#start">极速上手</a>
+          <a href="#capabilities">核心能力</a>
+          <a href="#product">产品说明</a>
+          <a href="#faq">常见问题</a>
+        </div>
+        <a class="btn btn-dark" href="../dist/PitInk-1.0.0.dmg">免费下载</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero page">
+    <p class="hero-eyebrow">macOS · Markdown · AI</p>
+    <h1 class="hero-title">
+      <span class="rotate" id="heroRotate"><span>笔记编写太累？</span></span>
+    </h1>
+    <p class="hero-sub">
+      用原生 macOS Markdown 编辑器，一边写一边看，任务勾选、图片粘贴、AI 补全一次搞定。
+    </p>
+
+    <p class="hero-resolve">无需折腾，打开 PitInk 就能专注写作。</p>
+
+    <div class="cta-stack">
+      <a class="btn btn-primary btn-block" href="../dist/PitInk-1.0.0.dmg">马上下载</a>
+      <a class="btn btn-secondary btn-block" href="#start">极速上手</a>
+    </div>
+
+    <p class="trust">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/>
+      </svg>
+      文档保存在本地。我们不会获取你的写作内容，保障绝对的文件安全。
+    </p>
+
+    <div class="hero-shot reveal">
+      <div class="hero-shot-glow" aria-hidden="true"></div>
+      <figure class="hero-shot-frame">
+        <img
+          src="./hero-product.png"
+          alt="PitInk 产品界面：原生 Markdown 编辑器与关于窗口"
+          width="1024"
+          height="677"
+          loading="eager"
+        />
+      </figure>
+      <p class="hero-shot-caption">Dig deep. Write clear. — 原生 macOS Markdown 写作工具</p>
+    </div>
+  </header>
+
+  <section class="band" id="start">
+    <div class="page">
+      <div class="section-head reveal">
+        <h2>极速上手</h2>
+        <p>下载安装 → 打开文档 → 开始写作。无需额外服务端，本地即可完成编辑与预览。</p>
+      </div>
+      <div class="grid-3">
+        <article class="card reveal">
+          <div class="num">1</div>
+          <h3>下载安装</h3>
+          <p>打开 DMG，将 PitInk.app 拖进「应用程序」，一步完成安装。</p>
+        </article>
+        <article class="card reveal">
+          <div class="num">2</div>
+          <h3>打开写作</h3>
+          <p>新建或打开 `.md`。左侧编辑，右侧实时预览，截图可直接 ⌘V。</p>
+        </article>
+        <article class="card reveal">
+          <div class="num">3</div>
+          <h3>勾选与补全</h3>
+          <p>用任务列表跟进事项；需要时配置 DeepSeek，一键按上下文续写。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="capabilities">
+    <div class="page">
+      <div class="section-head reveal">
+        <h2>核心能力</h2>
+        <p>原生体验、双栏预览、写作加速，一步到位。</p>
+      </div>
+      <div class="grid-3">
+        <article class="card reveal">
+          <h3>原生 macOS，开箱即用</h3>
+          <p>AppKit 原生应用，不是套壳网页。系统菜单、标题栏、快捷键手感干净，启动即写。</p>
+        </article>
+        <article class="card reveal">
+          <h3>双栏预览，所见即所得</h3>
+          <p>编辑与渲染同步。标题、列表、代码、图片、任务勾选都会如实呈现，减少来回切换。</p>
+        </article>
+        <article class="card reveal">
+          <h3>AI 续写，卡住也能推进</h3>
+          <p>接入你自己的 DeepSeek API Key。按当前上下文补全，密钥只保存在本机。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="product">
+    <div class="page">
+      <div class="split reveal">
+        <div>
+          <h2>PitInk 是做什么的？</h2>
+          <p>
+            它是一款专注 Markdown 的原生写作工具：帮你把想法从散落的备忘录里挖出来，
+            整理成结构清晰的文档，并在同一个窗口完成预览、任务跟进与图片插入。
+          </p>
+          <ul class="checks">
+            <li><span class="mark">✔</span><span class="text">多标签页管理多份文档</span></li>
+            <li><span class="mark">✔</span><span class="text">任务列表支持 <code>- [ ]</code> 与 <code>- [x]</code>，可在预览勾选</span></li>
+            <li><span class="mark">✔</span><span class="text">粘贴截图自动生成 Markdown 图片地址</span></li>
+            <li><span class="mark">✔</span><span class="text">本地文件优先，内容默认不上传服务器</span></li>
+          </ul>
+        </div>
+        <div class="preview" style="box-shadow:none;margin:0;">
+          <div class="preview-bar">
+            <i class="dot r"></i><i class="dot y"></i><i class="dot g"></i>
+            <strong>Dig deep. Write clear.</strong>
+          </div>
+          <div class="pane pane-preview" style="min-height:220px;">
+            <h3>产品定位</h3>
+            <p style="color:#555;margin-bottom:12px;">从坑洞里挖出想法，落成墨迹。</p>
+            <ul>
+              <li><i class="check on"></i><span class="done">原生写作</span></li>
+              <li><i class="check on"></i><span class="done">实时预览</span></li>
+              <li><i class="check"></i><span>AI 补全（可选）</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="page">
+      <div class="section-head reveal">
+        <h2>常见问题</h2>
+        <p>没找到想要的答案？先看这些高频问题。</p>
+      </div>
+      <div class="faq">
+        <details class="item reveal">
+          <summary>PitInk 是网页应用吗？</summary>
+          <p>不是。它是原生 macOS 应用（AppKit），安装到「应用程序」后本地运行。</p>
+        </details>
+        <details class="item reveal">
+          <summary>文档保存在哪里？</summary>
+          <p>保存在你选择的本地路径。粘贴图片会存到文档旁的 images/，或本机缓存目录。</p>
+        </details>
+        <details class="item reveal">
+          <summary>会上传我的内容吗？</summary>
+          <p>普通写作与预览都在本地完成。只有你主动使用 AI 补全时，才会把上下文发送给你配置的 DeepSeek API。</p>
+        </details>
+        <details class="item reveal">
+          <summary>支持哪些系统？</summary>
+          <p>macOS 12.0 及以上，Universal Binary，同时支持 Apple Silicon（M 系列）与 Intel。</p>
+        </details>
+        <details class="item reveal">
+          <summary>AI 补全需要付费吗？</summary>
+          <p>PitInk 本身免费下载。DeepSeek 使用你自己的 API 密钥与额度。</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="final page reveal">
+    <h2>马上下载，开始写作</h2>
+    <p>把想法挖出来，写成清楚的 Markdown。</p>
+    <a class="btn btn-primary btn-block" href="../dist/PitInk-1.0.0.dmg" style="margin:0 auto;">免费下载 PitInk 1.0.0</a>
+  </section>
+
+  <footer>
+    <div class="page footer-inner">
+      <p>© 2026 Smarttang · PitInk. Dig deep. Write clear. · <a href="mailto:tangyucong@163.com">tangyucong@163.com</a></p>
+      <div class="footer-links">
+        <a href="#start">极速上手</a>
+        <a href="#capabilities">核心能力</a>
+        <a href="#faq">常见问题</a>
+        <a href="../dist/PitInk-1.0.0.dmg">下载</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const nodes = document.querySelectorAll(".reveal");
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-in");
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    nodes.forEach((n) => io.observe(n));
+
+    // 首屏标题轮播：短句更吸睛
+    const rotateRoot = document.getElementById("heroRotate");
+    const rotateLines = ["笔记编写太累？", "没有灵感？"];
+    let rotateIndex = 0;
+    if (rotateRoot) {
+      setInterval(() => {
+        rotateRoot.classList.add("is-out");
+        setTimeout(() => {
+          rotateIndex = (rotateIndex + 1) % rotateLines.length;
+          rotateRoot.innerHTML = "<span>" + rotateLines[rotateIndex] + "</span>";
+          rotateRoot.classList.remove("is-out");
+        }, 320);
+      }, 2600);
+    }
+  </script>
+</body>
+</html>
